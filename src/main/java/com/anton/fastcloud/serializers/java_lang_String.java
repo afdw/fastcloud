@@ -4,8 +4,8 @@ import java.nio.ByteBuffer;
 
 public class java_lang_String {
     public static void serialize(ByteBuffer buffer, String object) {
-//        System.out.println(buffer);
-//        System.out.println(object);
+        System.out.println(buffer);
+        System.out.println(object);
 //        buffer.putInt(object.length());
 //        buffer.put(object.getBytes());
     }

@@ -8,9 +8,11 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.commons.Method;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class SerializationsClassLoader extends URLClassLoader {
     public static final SerializationsClassLoader INSTANCE = new SerializationsClassLoader();
@@ -54,6 +56,9 @@ public class SerializationsClassLoader extends URLClassLoader {
                         classWriter
                 );
                 for (Field field : clazz.getFields()) {
+                    if (Modifier.isStatic(field.getModifiers())) {
+                        continue;
+                    }
                     generatorAdapter.loadArg(0);
                     generatorAdapter.getField(Type.getType(clazz), field.getName(), Type.getType(field.getType()));
                     generatorAdapter.invokeStatic(
