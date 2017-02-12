@@ -1,0 +1,67 @@
+group 'com.anton.fastcloud'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'c'
+
+sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile group: 'com.google.guava', name: 'guava', version: '21.0'
+    compile group: 'io.undertow', name: 'undertow-websockets-jsr', version: '2.0.0.Alpha1'
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+}
+
+model {
+    components {
+        bindings(NativeLibrarySpec)
+    }
+
+    binaries {
+        all {
+            if (toolChain in Gcc) {
+                cCompiler.args "-g"
+                cCompiler.args "-Og"
+                cCompiler.args "-I${System.properties['java.home']}/../include"
+                if (org.gradle.internal.os.OperatingSystem.current().isLinux()) {
+                    cCompiler.args "-I${System.properties['java.home']}/../include/linux"
+                    cCompiler.args "-D_FILE_OFFSET_BITS=64"
+                    cCompiler.args 'pkg-config fuse3 --cflags'.execute().text.trim().split(' ')
+                    linker.args 'pkg-config fuse3 --libs'.execute().text.trim().split(' ')
+                }
+            }
+        }
+    }
+}
+
+sourceSets {
+    bindings
+    main {
+        compileClasspath += bindings.output
+        runtimeClasspath += bindings.output
+    }
+}
+
+processResources {
+    from "${project.buildFile.parent}/build/libs/bindings/shared"
+}
+
+task generateHeaders(dependsOn: ':classes', type: Exec) {
+    def classesDir = project.sourceSets.bindings.output.classesDir
+    workingDir classesDir
+    executable "${System.properties['java.home']}/../bin/javah"
+    args '-d', "${project.buildFile.parent}/src/bindings/headers"
+    doFirst {
+        fileTree dir: classesDir, include: '**/*Native.class' visit {
+            if (!it.directory) args it.path[0..-7].replace('/', '.')
+        }
+    }
+}
+
+tasks.whenTaskAdded { task ->
+    if (task.name == "bindingsSharedLibrary" || task.name == "bindingsStaticLibrary") task.dependsOn generateHeaders
+}
