@@ -1,18 +1,20 @@
 package com.anton.fastcloud;
 
 
-import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.nio.file.Files;
 
 public class SerializationsClassLoader extends URLClassLoader {
     public static final SerializationsClassLoader INSTANCE = new SerializationsClassLoader();
@@ -60,6 +62,7 @@ public class SerializationsClassLoader extends URLClassLoader {
                         continue;
                     }
                     generatorAdapter.loadArg(0);
+                    generatorAdapter.loadArg(1);
                     generatorAdapter.getField(Type.getType(clazz), field.getName(), Type.getType(field.getType()));
                     generatorAdapter.invokeStatic(
                             Type.getObjectType(getSerializerNameFromClass(field.getType()).replaceAll("\\.", "/")),
@@ -70,6 +73,13 @@ public class SerializationsClassLoader extends URLClassLoader {
                 generatorAdapter.endMethod();
                 classWriter.visitEnd();
                 byte[] bytes = classWriter.toByteArray();
+                if (false) {
+                    try {
+                        Files.write(new File("test.class").toPath(), bytes);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
                 return defineClass(name, bytes, 0, bytes.length);
             }
         }
