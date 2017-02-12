@@ -11,9 +11,20 @@ import io.undertow.servlet.api.ServletContainer;
 import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
 
 import javax.servlet.ServletException;
+import java.lang.reflect.InvocationTargetException;
+import java.nio.ByteBuffer;
 
 public class ServerMain {
     public static void main(String[] args) {
+        try {
+            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            SerializationsClassLoader.INSTANCE.loadClass(SerializationsClassLoader.getSerializerNameFromClass(User.class))
+                    .getMethod("serialize", ByteBuffer.class, User.class)
+                    .invoke(null, buffer, new User("123", "456"));
+        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+
         PathHandler path = Handlers.path();
 
         Undertow server = Undertow.builder()
