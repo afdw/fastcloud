@@ -23,11 +23,14 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 public class SerializersClassLoader extends URLClassLoader {
-    private static final SerializersClassLoader INSTANCE = new SerializersClassLoader();
+    private static final SerializersClassLoader instance = new SerializersClassLoader();
 
     private static final String PREFIX = "com.anton.fastcloud.serializers.";
 
+    private static final String INSTANCE_FIELD = "instance";
+
     private static final Map<Class<?>, String> METHOD_NAMES = new HashMap<>();
+
     static {
         METHOD_NAMES.put(boolean.class, "");
         METHOD_NAMES.put(byte.class, "");
@@ -41,12 +44,12 @@ public class SerializersClassLoader extends URLClassLoader {
 
     private static final boolean DEBUG = false;
 
-    private final Map<Class, INonStaticSerializer> nonStaticSerializers = new HashMap<>();
+    private final Map<Class, ISerializer<?>> serializers = new HashMap<>();
 
     private SerializersClassLoader() {
         super(new URL[0]);
-        nonStaticSerializers.put(UUID.class, new java_util_UUID());
-        nonStaticSerializers.put(String.class, new java_lang_String());
+        serializers.put(UUID.class, java_util_UUID.instance);
+        serializers.put(String.class, java_lang_String.instance);
     }
 
     private static String getSerializerNameFromClass(Class<?> clazz) {
@@ -87,12 +90,19 @@ public class SerializersClassLoader extends URLClassLoader {
             );
             generatorAdapter.pop();
         } else {
-            generatorAdapter.invokeStatic(
+            generatorAdapter.getStatic(
+                    Type.getObjectType(getSerializerNameFromClass(type).replaceAll("\\.", "/")),
+                    INSTANCE_FIELD,
+                    Type.getObjectType(getSerializerNameFromClass(type).replaceAll("\\.", "/"))
+            );
+            generatorAdapter.dupX2();
+            generatorAdapter.pop();
+            generatorAdapter.invokeVirtual(
                     Type.getObjectType(getSerializerNameFromClass(type).replaceAll("\\.", "/")),
                     new Method(
                             methodName,
                             Type.VOID_TYPE,
-                            new Type[] {Type.getType(ByteBuffer.class), Type.getType(type)}
+                            new Type[] {Type.getType(ByteBuffer.class), Type.getType(Object.class)}
                     )
             );
         }
@@ -116,11 +126,17 @@ public class SerializersClassLoader extends URLClassLoader {
                 generatorAdapter.cast(Type.BYTE_TYPE, Type.BOOLEAN_TYPE);
             }
         } else {
-            generatorAdapter.invokeStatic(
+            generatorAdapter.getStatic(
+                    Type.getObjectType(getSerializerNameFromClass(type).replaceAll("\\.", "/")),
+                    INSTANCE_FIELD,
+                    Type.getObjectType(getSerializerNameFromClass(type).replaceAll("\\.", "/"))
+            );
+            generatorAdapter.swap();
+            generatorAdapter.invokeVirtual(
                     Type.getObjectType(getSerializerNameFromClass(type).replaceAll("\\.", "/")),
                     new Method(
                             methodName,
-                            Type.getType(type),
+                            Type.getType(Object.class),
                             new Type[] {Type.getType(ByteBuffer.class)}
                     )
             );
@@ -159,6 +175,8 @@ public class SerializersClassLoader extends URLClassLoader {
             switch (methodName) {
                 case "serialize":
                     generatorAdapter.loadArg(1);
+                    // Stack: array
+                    generatorAdapter.checkCast(Type.getType(clazz));
                     // Stack: array
                     generatorAdapter.arrayLength();
                     // Stack: length of array
@@ -260,6 +278,7 @@ public class SerializersClassLoader extends URLClassLoader {
                             case "serialize":
                                 generatorAdapter.loadArg(0);
                                 generatorAdapter.loadArg(1);
+                                generatorAdapter.checkCast(Type.getType(clazz));
                                 generatorAdapter.getField(Type.getType(clazz), field.getName(), Type.getType(fieldType));
                                 generateSerialize(methodName, generatorAdapter, fieldType);
                                 break;
@@ -275,122 +294,125 @@ public class SerializersClassLoader extends URLClassLoader {
         generatorAdapter.mark(returnLabel);
     }
 
+    private void generateSerializerClass(String name, Class<?> clazz, ClassWriter classWriter) {
+        classWriter.visit(
+                Opcodes.V1_7,
+                Opcodes.ACC_PUBLIC,
+                name.replaceAll("\\.", "/"),
+                null,
+                "sun/reflect/MagicAccessorImpl",
+                new String[] {ISerializer.class.getName().replaceAll("\\.", "/")}
+        );
+        classWriter.visitField(
+                Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL,
+                INSTANCE_FIELD,
+                "L" + name.replaceAll("\\.", "/") + ";",
+                null,
+                null
+        );
+        classWriter.visitEnd();
+        {
+            GeneratorAdapter generatorAdapter = new GeneratorAdapter(
+                    Opcodes.ACC_STATIC,
+                    new Method(
+                            "<clinit>",
+                            Type.VOID_TYPE,
+                            new Type[] {}
+                    ),
+                    null,
+                    null,
+                    classWriter
+            );
+            generatorAdapter.newInstance(Type.getObjectType(name.replaceAll("\\.", "/")));
+            generatorAdapter.dup();
+            generatorAdapter.invokeConstructor(
+                    Type.getObjectType(name.replaceAll("\\.", "/")),
+                    new Method(
+                            "<init>",
+                            Type.VOID_TYPE,
+                            new Type[] {}
+                    )
+            );
+            generatorAdapter.putStatic(
+                    Type.getObjectType(name.replaceAll("\\.", "/")),
+                    INSTANCE_FIELD,
+                    Type.getObjectType(name.replaceAll("\\.", "/"))
+            );
+            generatorAdapter.returnValue();
+            generatorAdapter.endMethod();
+        }
+        {
+            GeneratorAdapter generatorAdapter = new GeneratorAdapter(
+                    Opcodes.ACC_PRIVATE,
+                    new Method(
+                            "<init>",
+                            Type.VOID_TYPE,
+                            new Type[] {}
+                    ),
+                    null,
+                    null,
+                    classWriter
+            );
+            generatorAdapter.loadThis();
+            generatorAdapter.invokeConstructor(
+                    Type.getType(Object.class),
+                    new Method(
+                            "<init>",
+                            Type.VOID_TYPE,
+                            new Type[] {}
+                    )
+            );
+            generatorAdapter.returnValue();
+            generatorAdapter.endMethod();
+        }
+        Stream.of("serialize", "deserialize").forEach(methodName -> {
+            GeneratorAdapter generatorAdapter;
+            switch (methodName) {
+                case "serialize":
+                    generatorAdapter = new GeneratorAdapter(
+                            Opcodes.ACC_PUBLIC,
+                            new Method(
+                                    methodName,
+                                    Type.VOID_TYPE,
+                                    new Type[] {Type.getType(ByteBuffer.class), Type.getType(Object.class)}
+                            ),
+                            null,
+                            null,
+                            classWriter
+                    );
+                    break;
+                case "deserialize":
+                    generatorAdapter = new GeneratorAdapter(
+                            Opcodes.ACC_PUBLIC,
+                            new Method(
+                                    methodName,
+                                    Type.getType(Object.class),
+                                    new Type[] {Type.getType(ByteBuffer.class)}
+                            ),
+                            null,
+                            null,
+                            classWriter
+                    );
+                    break;
+                default:
+                    generatorAdapter = null;
+                    break;
+            }
+            assert generatorAdapter != null;
+            generateMethodBody(clazz, methodName, generatorAdapter);
+            generatorAdapter.returnValue();
+            generatorAdapter.endMethod();
+        });
+        classWriter.visitEnd();
+    }
+
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         if (name.startsWith(PREFIX)) {
             Class<?> clazz = getClassFromSerializerName(name);
             if (clazz != null && (DataObject.class.isAssignableFrom(clazz) || clazz.isArray())) {
                 ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-                classWriter.visit(
-                        Opcodes.V1_7,
-                        Opcodes.ACC_PUBLIC,
-                        name.replaceAll("\\.", "/"),
-                        null,
-                        "sun/reflect/MagicAccessorImpl",
-                        new String[] {INonStaticSerializer.class.getName().replaceAll("\\.", "/")}
-                );
-                {
-                    GeneratorAdapter generatorAdapter = new GeneratorAdapter(
-                            Opcodes.ACC_PUBLIC,
-                            new Method(
-                                    "<init>",
-                                    Type.VOID_TYPE,
-                                    new Type[] {}
-                            ),
-                            null,
-                            null,
-                            classWriter
-                    );
-                    generatorAdapter.loadThis();
-                    generatorAdapter.invokeConstructor(
-                            Type.getType(Object.class),
-                            new Method(
-                                    "<init>",
-                                    Type.VOID_TYPE,
-                                    new Type[] {}
-                            )
-                    );
-                    generatorAdapter.returnValue();
-                    generatorAdapter.endMethod();
-                }
-                Stream.of("serialize", "deserialize").forEach(methodName -> {
-                    GeneratorAdapter generatorAdapter;
-                    switch (methodName) {
-                        case "serialize":
-                            generatorAdapter = new GeneratorAdapter(
-                                    Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC,
-                                    new Method(
-                                            methodName,
-                                            Type.VOID_TYPE,
-                                            new Type[] {Type.getType(ByteBuffer.class), Type.getType(clazz)}
-                                    ),
-                                    null,
-                                    null,
-                                    classWriter
-                            );
-                            break;
-                        case "deserialize":
-                            generatorAdapter = new GeneratorAdapter(
-                                    Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC,
-                                    new Method(
-                                            methodName,
-                                            Type.getType(clazz),
-                                            new Type[] {Type.getType(ByteBuffer.class)}
-                                    ),
-                                    null,
-                                    null,
-                                    classWriter
-                            );
-                            break;
-                        default:
-                            generatorAdapter = null;
-                            break;
-                    }
-                    assert generatorAdapter != null;
-                    generateMethodBody(clazz, methodName, generatorAdapter);
-                    generatorAdapter.returnValue();
-                    generatorAdapter.endMethod();
-                    switch (methodName) {
-                        case "serialize":
-                            generatorAdapter = new GeneratorAdapter(
-                                    Opcodes.ACC_PUBLIC,
-                                    new Method(
-                                            methodName + "NonStatic",
-                                            Type.VOID_TYPE,
-                                            new Type[] {Type.getType(ByteBuffer.class), Type.getType(Object.class)}
-                                    ),
-                                    null,
-                                    null,
-                                    classWriter
-                            );
-                            generatorAdapter.loadArg(0);
-                            generatorAdapter.loadArg(1);
-                            generateSerialize(methodName, generatorAdapter, clazz);
-                            break;
-                        case "deserialize":
-                            generatorAdapter = new GeneratorAdapter(
-                                    Opcodes.ACC_PUBLIC,
-                                    new Method(
-                                            methodName + "NonStatic",
-                                            Type.getType(Object.class),
-                                            new Type[] {Type.getType(ByteBuffer.class)}
-                                    ),
-                                    null,
-                                    null,
-                                    classWriter
-                            );
-                            generatorAdapter.loadArg(0);
-                            generateDeserialize(methodName, generatorAdapter, clazz);
-                            break;
-                        default:
-                            generatorAdapter = null;
-                            break;
-                    }
-                    assert generatorAdapter != null;
-                    generatorAdapter.returnValue();
-                    generatorAdapter.endMethod();
-                });
-                classWriter.visitEnd();
+                generateSerializerClass(name, clazz, classWriter);
                 byte[] bytes = classWriter.toByteArray();
                 if (DEBUG) {
                     try {
@@ -406,17 +428,20 @@ public class SerializersClassLoader extends URLClassLoader {
         return super.findClass(name);
     }
 
-    @SuppressWarnings("WeakerAccess")
-    public static INonStaticSerializer getNonStaticSerializer(Class<?> clazz) {
-        INonStaticSerializer nonStaticSerializer = SerializersClassLoader.INSTANCE.nonStaticSerializers.get(clazz);
-        if (nonStaticSerializer == null) {
+    @SuppressWarnings({"WeakerAccess", "unchecked"})
+    public static <T> ISerializer<T> getSerializer(Class<T> clazz) {
+        ISerializer<T> serializer = (ISerializer<T>) SerializersClassLoader.instance.serializers.get(clazz);
+        if (serializer == null) {
             try {
-                Class<?> generatedClass = SerializersClassLoader.INSTANCE.loadClass(SerializersClassLoader.getSerializerNameFromClass(clazz));
-                SerializersClassLoader.INSTANCE.nonStaticSerializers.put(clazz, nonStaticSerializer = (INonStaticSerializer) generatedClass.newInstance());
-            } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+                Class<ISerializer<T>> generatedClass = (Class<ISerializer<T>>) SerializersClassLoader.instance.loadClass(
+                        SerializersClassLoader.getSerializerNameFromClass(clazz)
+                );
+                serializer = (ISerializer<T>) generatedClass.getField(INSTANCE_FIELD).get(null);
+                SerializersClassLoader.instance.serializers.put(clazz, serializer);
+            } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException e) {
                 throw new RuntimeException(e);
             }
         }
-        return nonStaticSerializer;
+        return serializer;
     }
 }

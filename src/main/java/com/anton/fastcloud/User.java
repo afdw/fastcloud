@@ -21,7 +21,8 @@ public class User extends DataObject {
     @Override
     public String toString() {
         return "User{" +
-                "username='" + username + '\'' +
+                "id='" + id + '\'' +
+                ", username='" + username + '\'' +
                 ", password='" + password + '\'' +
                 ", test=" + test +
                 ", fiends=" + Arrays.toString(fiends) +

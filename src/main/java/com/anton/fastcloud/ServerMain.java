@@ -15,13 +15,13 @@ import java.nio.ByteBuffer;
 
 public class ServerMain {
     public static void main(String[] args) {
-        INonStaticSerializer nonStaticSerializer = SerializersClassLoader.getNonStaticSerializer(User.class);
+        ISerializer<User> serializer = SerializersClassLoader.getSerializer(User.class);
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         User userOld = new User("123", "456", true, new User[] {new User("789", "012", false, new User[]{null})});
         System.out.println(userOld);
-        nonStaticSerializer.serializeNonStatic(buffer, userOld);
+        serializer.serialize(buffer, userOld);
         buffer.rewind();
-        User userNew = (User) nonStaticSerializer.deserializeNonStatic(buffer);
+        User userNew = serializer.deserialize(buffer);
         System.out.println(userNew);
 
         PathHandler path = Handlers.path();
