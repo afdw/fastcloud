@@ -18,9 +18,17 @@ public class ServerMain {
     public static void main(String[] args) {
         try {
             ByteBuffer buffer = ByteBuffer.allocate(1024);
-            SerializationsClassLoader.INSTANCE.loadClass(SerializationsClassLoader.getSerializerNameFromClass(User.class))
+            Class<?> serializerClass = SerializationsClassLoader.INSTANCE.loadClass(SerializationsClassLoader.getSerializerNameFromClass(User.class));
+            User userOld = new User("123", "456", true, new User[] {new User("789", "012", false, new User[]{null})});
+            System.out.println(userOld);
+            serializerClass
                     .getMethod("serialize", ByteBuffer.class, User.class)
-                    .invoke(null, buffer, new User("123", "456"));
+                    .invoke(null, buffer, userOld);
+            buffer.rewind();
+            User userNew = (User) serializerClass
+                    .getMethod("deserialize", ByteBuffer.class)
+                    .invoke(null, buffer);
+            System.out.println(userNew);
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
