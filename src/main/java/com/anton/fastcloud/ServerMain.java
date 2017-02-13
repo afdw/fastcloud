@@ -11,27 +11,18 @@ import io.undertow.servlet.api.ServletContainer;
 import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
 
 import javax.servlet.ServletException;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 
 public class ServerMain {
     public static void main(String[] args) {
-        try {
-            ByteBuffer buffer = ByteBuffer.allocate(1024);
-            Class<?> serializerClass = SerializationsClassLoader.INSTANCE.loadClass(SerializationsClassLoader.getSerializerNameFromClass(User.class));
-            User userOld = new User("123", "456", true, new User[] {new User("789", "012", false, new User[]{null})});
-            System.out.println(userOld);
-            serializerClass
-                    .getMethod("serialize", ByteBuffer.class, User.class)
-                    .invoke(null, buffer, userOld);
-            buffer.rewind();
-            User userNew = (User) serializerClass
-                    .getMethod("deserialize", ByteBuffer.class)
-                    .invoke(null, buffer);
-            System.out.println(userNew);
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
+        INonStaticSerializer nonStaticSerializer = SerializersClassLoader.getNonStaticSerializer(User.class);
+        ByteBuffer buffer = ByteBuffer.allocate(1024);
+        User userOld = new User("123", "456", true, new User[] {new User("789", "012", false, new User[]{null})});
+        System.out.println(userOld);
+        nonStaticSerializer.serializeNonStatic(buffer, userOld);
+        buffer.rewind();
+        User userNew = (User) nonStaticSerializer.deserializeNonStatic(buffer);
+        System.out.println(userNew);
 
         PathHandler path = Handlers.path();
 
