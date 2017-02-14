@@ -271,7 +271,11 @@ public class SerializersClassLoader extends URLClassLoader {
             }
             Stream.concat(Stream.of(clazz.getDeclaredFields()), Stream.of(clazz.getFields()))
                     .distinct()
-                    .filter(field -> !Modifier.isStatic(field.getModifiers()) && Modifier.isPublic(field.getModifiers()))
+                    .filter(field ->
+                            !Modifier.isStatic(field.getModifiers()) &&
+                                    Modifier.isPublic(field.getModifiers()) &&
+                                    !Modifier.isTransient(field.getModifiers())
+                    )
                     .forEach(field -> {
                         Class<?> fieldType = field.getType();
                         switch (methodName) {
