@@ -2,57 +2,37 @@ package com.anton.fastcloud;
 
 import io.undertow.Handlers;
 import io.undertow.Undertow;
-import io.undertow.server.DefaultByteBufferPool;
-import io.undertow.server.handlers.PathHandler;
 import io.undertow.server.handlers.resource.ClassPathResourceManager;
-import io.undertow.servlet.api.DeploymentInfo;
-import io.undertow.servlet.api.DeploymentManager;
-import io.undertow.servlet.api.ServletContainer;
-import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
+import io.undertow.websockets.core.AbstractReceiveListener;
+import io.undertow.websockets.core.WebSockets;
 
-import javax.servlet.ServletException;
 import java.nio.ByteBuffer;
 
 public class ServerMain {
     public static void main(String[] args) {
         ISerializer<User> serializer = SerializersClassLoader.getSerializer(User.class);
         ByteBuffer buffer = ByteBuffer.allocate(1024);
-        User userOld = new User("123", "456", true, new User[] {new User("789", "012", false, new User[]{null})});
+        User userOld = new User("123", "456", true, new User[] {new User("789", "012", false, new User[] {null})});
         System.out.println(userOld);
         serializer.serialize(buffer, userOld);
         buffer.rewind();
         User userNew = serializer.deserialize(buffer);
         System.out.println(userNew);
 
-        PathHandler path = Handlers.path();
-
         Undertow server = Undertow.builder()
+                .setWorker(IOUtils.createWorker())
                 .addHttpListener(8080, "localhost")
-                .setHandler(path)
+                .setHandler(
+                        Handlers.path()
+                                .addPrefixPath("/websocket", Handlers.websocket((exchange, channel) -> {
+                                    WebSockets.sendText("Hello", channel, null);
+                                    channel.getReceiveSetter().set(new AbstractReceiveListener() {
+                                    });
+                                    channel.resumeReceives();
+                                }))
+                                .addPrefixPath("/", Handlers.resource(new ClassPathResourceManager(ServerMain.class.getClassLoader())))
+                )
                 .build();
         server.start();
-
-        ServletContainer container = ServletContainer.Factory.newInstance();
-
-        DeploymentInfo builder = new DeploymentInfo()
-                .setClassLoader(ServerMain.class.getClassLoader())
-                .setContextPath("/")
-                .addWelcomePage("index.html")
-                .setResourceManager(new ClassPathResourceManager(ServerMain.class.getClassLoader()))
-                .addServletContextAttribute(
-                        WebSocketDeploymentInfo.ATTRIBUTE_NAME,
-                        new WebSocketDeploymentInfo()
-                                .setBuffers(new DefaultByteBufferPool(true, 100))
-                                .addEndpoint(WebSocketEndpoint.class)
-                )
-                .setDeploymentName("fastcloud.war");
-
-        DeploymentManager manager = container.addDeployment(builder);
-        manager.deploy();
-        try {
-            path.addPrefixPath("/", manager.start());
-        } catch (ServletException e) {
-            throw new RuntimeException(e);
-        }
     }
 }
