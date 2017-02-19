@@ -1,4 +1,4 @@
-package com.anton.fastcloud;
+package com.anton.fastcloud.serialization;
 
 import java.nio.ByteBuffer;
 

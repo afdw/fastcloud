@@ -1,4 +1,4 @@
-package com.anton.fastcloud;
+package com.anton.fastcloud.client;
 
 import com.anton.fastcloud.bindings.Bindings;
 import com.anton.fastcloud.bindings.FuseLibNative;

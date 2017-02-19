@@ -1,6 +1,7 @@
-package com.anton.fastcloud;
+package com.anton.fastcloud.serialization;
 
 
+import com.anton.fastcloud.data.DataObject;
 import com.anton.fastcloud.serializers.java_lang_String;
 import com.anton.fastcloud.serializers.java_util_UUID;
 import org.objectweb.asm.ClassWriter;

@@ -1,14 +1,17 @@
-package com.anton.fastcloud;
+package com.anton.fastcloud.client;
 
+import com.anton.fastcloud.util.IOUtils;
 import io.undertow.server.DefaultByteBufferPool;
 import io.undertow.websockets.client.WebSocketClient;
 import io.undertow.websockets.core.AbstractReceiveListener;
 import io.undertow.websockets.core.BufferedTextMessage;
 import io.undertow.websockets.core.WebSocketChannel;
+import io.undertow.websockets.core.WebSockets;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
 
 public class ClientMain {
     public static void main(String[] args) {
@@ -25,6 +28,7 @@ public class ClientMain {
         channel.getReceiveSetter().set(new AbstractReceiveListener() {
             @Override
             protected void onFullTextMessage(WebSocketChannel channel, BufferedTextMessage message) throws IOException {
+                WebSockets.sendBinary(ByteBuffer.allocate(128), channel, null);
                 System.out.println(message.getData());
             }
         });

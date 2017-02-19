@@ -1,4 +1,4 @@
-package com.anton.fastcloud;
+package com.anton.fastcloud.data;
 
 import java.util.Arrays;
 

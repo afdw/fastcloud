@@ -1,6 +1,6 @@
 package com.anton.fastcloud.serializers;
 
-import com.anton.fastcloud.ISerializer;
+import com.anton.fastcloud.serialization.ISerializer;
 
 import java.nio.ByteBuffer;
 
