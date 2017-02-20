@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 public class TestContinuousBuffer {
     @Test
@@ -23,7 +22,6 @@ public class TestContinuousBuffer {
         Assert.assertEquals(count / ByteBufferPool.BUFFER_SIZE * 4, byteBuffers.length);
         ContinuousBuffer newBuffer = new ContinuousBuffer(byteBuffers);
         int[] newArray = IntStream.range(0, count).map(i -> newBuffer.readInt()).toArray();
-        Stream.of(newBuffer.toByteBuffers()).forEach(ByteBufferPool::release);
         Assert.assertArrayEquals(oldArray, newArray);
     }
 }
