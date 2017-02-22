@@ -5,7 +5,7 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 
 public class ByteBufferPool {
-    public static final int BUFFER_SIZE = 1024;
+    public static final int BUFFER_SIZE = 1024 * 1024 * 2;
     private static final Queue<ByteBuffer> buffers = new ArrayDeque<>();
 
     public static ByteBuffer take() {

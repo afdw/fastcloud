@@ -1,11 +1,13 @@
-package com.anton.fastcloud.bindings;
+package com.anton.fastcloud.natives;
+
+import com.anton.fastcloud.bindings.FuseLibNative;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class Bindings {
-    public static final String[] LIB_NAMES = {"libbindings.so"};
+public class Natives {
+    public static final String[] LIB_NAMES = {"libnatives.so"};
 
     public static void init() {
         try {

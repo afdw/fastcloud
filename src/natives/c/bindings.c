@@ -3,144 +3,8 @@
 #include <errno.h>
 #define FUSE_USE_VERSION 30
 #include <fuse_lowlevel.h>
-#include "com_anton_fastcloud_bindings_FuseLibNative.h"
-
-/*static const char *hello_str = "Hello World!\n";
-static const char *hello_name = "hello";
-
-static int hello_stat(fuse_ino_t ino, struct stat *stbuf)
-{
-	stbuf->st_ino = ino;
-	switch (ino) {
-	case 1:
-		stbuf->st_mode = S_IFDIR | 0755;
-		stbuf->st_nlink = 2;
-		break;
-
-	case 2:
-		stbuf->st_mode = S_IFREG | 0444;
-		stbuf->st_nlink = 1;
-		stbuf->st_size = strlen(hello_str);
-		break;
-
-	default:
-		return -1;
-	}
-	return 0;
-}
-
-static void hello_ll_getattr(fuse_req_t req, fuse_ino_t ino,
-			     struct fuse_file_info *fi)
-{
-	struct stat stbuf;
-
-	(void) fi;
-
-	memset(&stbuf, 0, sizeof(stbuf));
-	if (hello_stat(ino, &stbuf) == -1)
-		fuse_reply_err(req, ENOENT);
-	else
-		fuse_reply_attr(req, &stbuf, 1.0);
-}
-
-static void hello_ll_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
-{
-	struct fuse_entry_param e;
-
-	if (parent != 1 || strcmp(name, hello_name) != 0)
-		fuse_reply_err(req, ENOENT);
-	else {
-		memset(&e, 0, sizeof(e));
-		e.ino = 2;
-		e.attr_timeout = 1.0;
-		e.entry_timeout = 1.0;
-		hello_stat(e.ino, &e.attr);
-
-		fuse_reply_entry(req, &e);
-	}
-}
-
-struct dirbuf {
-	char *p;
-	size_t size;
-};
-
-static void dirbuf_add(fuse_req_t req, struct dirbuf *b, const char *name,
-		       fuse_ino_t ino)
-{
-	struct stat stbuf;
-	size_t oldsize = b->size;
-	b->size += fuse_add_direntry(req, NULL, 0, name, NULL, 0);
-	b->p = (char *) realloc(b->p, b->size);
-	memset(&stbuf, 0, sizeof(stbuf));
-	stbuf.st_ino = ino;
-	fuse_add_direntry(req, b->p + oldsize, b->size - oldsize, name, &stbuf,
-			  b->size);
-}
-
-#define min(x, y) ((x) < (y) ? (x) : (y))
-
-static int reply_buf_limited(fuse_req_t req, const char *buf, size_t bufsize,
-			     off_t off, size_t maxsize)
-{
-	if (off < bufsize)
-		return fuse_reply_buf(req, buf + off,
-				      min(bufsize - off, maxsize));
-	else
-		return fuse_reply_buf(req, NULL, 0);
-}
-
-static void hello_ll_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
-			     off_t off, struct fuse_file_info *fi)
-{
-	(void) fi;
-
-	if (ino != 1)
-		fuse_reply_err(req, ENOTDIR);
-	else {
-		struct dirbuf b;
-
-		memset(&b, 0, sizeof(b));
-		dirbuf_add(req, &b, ".", 1);
-		dirbuf_add(req, &b, "..", 1);
-		dirbuf_add(req, &b, hello_name, 2);
-		reply_buf_limited(req, b.p, b.size, off, size);
-		free(b.p);
-	}
-}
-
-static void hello_ll_open(fuse_req_t req, fuse_ino_t ino,
-			  struct fuse_file_info *fi)
-{
-	if (ino != 2)
-		fuse_reply_err(req, EISDIR);
-	else if ((fi->flags & 3) != O_RDONLY)
-		fuse_reply_err(req, EACCES);
-	else
-		fuse_reply_open(req, fi);
-}
-
-static void hello_ll_read(fuse_req_t req, fuse_ino_t ino, size_t size,
-			  off_t off, struct fuse_file_info *fi)
-{
-	(void) fi;
-
-	reply_buf_limited(req, hello_str, strlen(hello_str), off, size);
-}
-
-static struct fuse_lowlevel_ops hello_ll_oper = {
-	.lookup		= hello_ll_lookup,
-	.getattr	= hello_ll_getattr,
-	.readdir	= hello_ll_readdir,
-	.open		= hello_ll_open,
-	.read		= hello_ll_read,
-};*/
-
-// Naming for funcs, args and vars:
-// - jniName
-// - fuseType
-// - name (for my things)
-// Everything in lower camel case
+#include "common.h"
+#include "generated/com_anton_fastcloud_bindings_FuseLibNative.h"
 
 // Helpers
 
@@ -216,7 +80,8 @@ struct timespec getSystemTimespecFromJniTimespec(JNIEnv *jniEnv, jobject jniTime
 struct stat getSystemStatFromJniStat(JNIEnv *jniEnv, jobject jniStat) {
     jclass jniStatClass = (*jniEnv)->FindClass(jniEnv, "com/anton/fastcloud/bindings/SystemNative$stat");
     struct stat systemStat;
-    #define set32Field(name) systemStat.name = (*jniEnv)->GetIntField( \
+    #define set32Field(name) \
+        systemStat.name = (*jniEnv)->GetIntField( \
                 jniEnv, \
                 jniStat, \
                 (*jniEnv)->GetFieldID( \
@@ -226,7 +91,8 @@ struct stat getSystemStatFromJniStat(JNIEnv *jniEnv, jobject jniStat) {
                         "I" \
                 ) \
         );
-    #define set64Field(name) systemStat.name = (*jniEnv)->GetLongField( \
+    #define set64Field(name) \
+        systemStat.name = (*jniEnv)->GetLongField( \
                 jniEnv, \
                 jniStat,\
                 (*jniEnv)->GetFieldID( \
@@ -236,7 +102,8 @@ struct stat getSystemStatFromJniStat(JNIEnv *jniEnv, jobject jniStat) {
                         "J" \
                 ) \
         );
-    #define setTSField(name) systemStat.name = getSystemTimespecFromJniTimespec( \
+    #define setTSField(name) \
+        systemStat.name = getSystemTimespecFromJniTimespec( \
                 jniEnv, \
                 (*jniEnv)->GetObjectField( \
                         jniEnv, \
@@ -330,7 +197,8 @@ struct fuse_entry_param *getFuseFuse_entry_paramFromJniFuse_entry_param(JNIEnv *
 struct fuse_file_info *getFuseFuse_file_infoFromJniFuse_file_info(JNIEnv *jniEnv, jobject jniFuse_file_info) {
     jclass jniFuse_file_infoClass = (*jniEnv)->FindClass(jniEnv, "com/anton/fastcloud/bindings/FuseLibNative$fuse_file_info");
     struct fuse_file_info *fuseFuse_file_info = malloc(sizeof(struct fuse_file_info));
-    #define set01Field(name) fuseFuse_file_info->name = (*jniEnv)->GetBooleanField( \
+    #define set01Field(name) \
+        fuseFuse_file_info->name = (*jniEnv)->GetBooleanField( \
                 jniEnv, \
                 jniFuse_file_info, \
                 (*jniEnv)->GetFieldID( \
@@ -340,7 +208,8 @@ struct fuse_file_info *getFuseFuse_file_infoFromJniFuse_file_info(JNIEnv *jniEnv
                         "Z" \
                 ) \
         );
-    #define set32Field(name) fuseFuse_file_info->name = (*jniEnv)->GetIntField( \
+    #define set32Field(name) \
+        fuseFuse_file_info->name = (*jniEnv)->GetIntField( \
                 jniEnv, \
                 jniFuse_file_info, \
                 (*jniEnv)->GetFieldID( \
@@ -350,7 +219,8 @@ struct fuse_file_info *getFuseFuse_file_infoFromJniFuse_file_info(JNIEnv *jniEnv
                         "I" \
                 ) \
         );
-    #define set64Field(name) fuseFuse_file_info->name = (*jniEnv)->GetLongField( \
+    #define set64Field(name) \
+        fuseFuse_file_info->name = (*jniEnv)->GetLongField( \
                 jniEnv, \
                 jniFuse_file_info,\
                 (*jniEnv)->GetFieldID( \
@@ -416,14 +286,6 @@ struct argsOpts getArgsOptsFromJniArgs(JNIEnv *jniEnv, jobjectArray jniArgs) {
     return argsOpts;
 }
 
-static JavaVM *jniJavaVM;
-
-JNIEnv *getJniEnv() {
-    JNIEnv *jniEnv;
-    (*jniJavaVM)->GetEnv(jniJavaVM, (void **) &jniEnv, JNI_VERSION_1_2);
-    return jniEnv;
-}
-
 struct opsUserdata {
     jobject jniOps;
     jobject jniUserdata;
@@ -479,7 +341,8 @@ void op_init(void *userdata, struct fuse_conn_info *conn) {
             opsUserdata->jniUserdata,
             jniFuse_conn_info
     );
-    #define setField(name) conn->name = (*jniEnv)->GetIntField( \
+    #define setField(name) \
+        conn->name = (*jniEnv)->GetIntField( \
                 jniEnv, \
                 jniFuse_conn_info, \
                 (*jniEnv)->GetFieldID( \
@@ -588,11 +451,6 @@ void op_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct f
 
 // JNI
 
-jint JNI_OnLoad(JavaVM *vm, void *reserved) {
-  jniJavaVM = vm;
-  return JNI_VERSION_1_2;
-}
-
 JNIEXPORT jobject JNICALL Java_com_anton_fastcloud_bindings_FuseLibNative_fuse_1session_1new(JNIEnv *jniEnv, jclass jniClass, jobjectArray jniArgs, jobject jniOps, jobject jniUserdata) {
     struct argsOpts argsOpts = getArgsOptsFromJniArgs(jniEnv, jniArgs);
     struct opsUserdata *opsUserdata = malloc(sizeof(struct opsUserdata));
@@ -609,7 +467,8 @@ JNIEXPORT jobject JNICALL Java_com_anton_fastcloud_bindings_FuseLibNative_fuse_1
             "hasMethod",
             "(Ljava/lang/String;)Z"
     );
-    #define method(name) if ((*jniEnv)->CallBooleanMethod(jniEnv, jniOps, jniHasMethodId, (*jniEnv)->NewStringUTF(jniEnv, #name))) { \
+    #define method(name) \
+        if ((*jniEnv)->CallBooleanMethod(jniEnv, jniOps, jniHasMethodId, (*jniEnv)->NewStringUTF(jniEnv, #name))) { \
                 fuseFuse_lowlevel_ops->name = op_ ## name; \
         }
     method(init)

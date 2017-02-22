@@ -1,7 +1,7 @@
-package com.anton.fastcloud.tests;
+package com.anton.fastcloud.test;
 
-import com.anton.fastcloud.buffer.ByteBufferPool;
 import com.anton.fastcloud.buffer.ContinuousBuffer;
+import com.anton.fastcloud.natives.Natives;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -11,6 +11,10 @@ import java.util.Random;
 import java.util.stream.IntStream;
 
 public class TestContinuousBuffer {
+    static {
+        Natives.init();
+    }
+
     @Test
     public void writeAndReadManyInts() {
         int count = 1024 * 1024;
@@ -19,9 +23,10 @@ public class TestContinuousBuffer {
         ContinuousBuffer oldBuffer = new ContinuousBuffer();
         Arrays.stream(oldArray).forEach(oldBuffer::writeInt);
         ByteBuffer[] byteBuffers = oldBuffer.toByteBuffers();
-        Assert.assertEquals(count / ByteBufferPool.BUFFER_SIZE * 4, byteBuffers.length);
+        oldBuffer.free();
         ContinuousBuffer newBuffer = new ContinuousBuffer(byteBuffers);
         int[] newArray = IntStream.range(0, count).map(i -> newBuffer.readInt()).toArray();
+        newBuffer.free();
         Assert.assertArrayEquals(oldArray, newArray);
     }
 }

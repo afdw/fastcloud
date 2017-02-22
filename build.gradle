@@ -1,8 +1,12 @@
-group 'com.anton.fastcloud'
-version '1.0-SNAPSHOT'
+plugins {
+    id "me.champeau.gradle.jmh" version "0.3.1"
+}
 
 apply plugin: 'java'
 apply plugin: 'c'
+
+group 'com.anton.fastcloud'
+version '1.0-SNAPSHOT'
 
 sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
 
@@ -16,16 +20,24 @@ dependencies {
     compile group: 'asm', name: 'asm-all', version: '3.3.1'
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.5'
     testCompile group: 'junit', name: 'junit', version: '4.11'
+    jmh 'org.openjdk.jmh:jmh-core:1.17.4'
+    jmh 'org.openjdk.jmh:jmh-generator-annprocess:1.17.4'
+}
+
+jmh {
+    include = ".*"
+    duplicateClassesStrategy = 'exclude'
 }
 
 model {
     components {
-        bindings(NativeLibrarySpec)
+        natives(NativeLibrarySpec)
     }
 
     binaries {
         all {
             if (toolChain in Gcc) {
+                cCompiler.args "-Werror"
                 cCompiler.args "-g"
                 cCompiler.args "-Og"
                 cCompiler.args "-I${System.properties['java.home']}/../include"
@@ -41,29 +53,37 @@ model {
 }
 
 sourceSets {
-    bindings
+    natives
     main {
-        compileClasspath += bindings.output
-        runtimeClasspath += bindings.output
+        compileClasspath += natives.output
+        runtimeClasspath += natives.output
+    }
+    test {
+        compileClasspath += natives.output
+        runtimeClasspath += natives.output
     }
 }
 
 processResources {
-    from "${project.buildFile.parent}/build/libs/bindings/shared"
+    from "${project.buildFile.parent}/build/libs/natives/shared"
+}
+
+task cleanGenerateHeaders {
+    delete project.file("${project.buildFile.parent}/src/natives/headers/generated")
 }
 
 task generateHeaders(dependsOn: ':classes', type: Exec) {
-    def classesDir = project.sourceSets.bindings.output.classesDir
+    def classesDir = project.sourceSets.natives.output.classesDir
     workingDir classesDir
     executable "${System.properties['java.home']}/../bin/javah"
-    args '-d', "${project.buildFile.parent}/src/bindings/headers"
+    args '-d', "${project.buildFile.parent}/src/natives/headers/generated"
     doFirst {
-        fileTree dir: classesDir, include: '**/*Native.class' visit {
+        fileTree dir: classesDir, include: '**/*.class' visit {
             if (!it.directory) args it.path[0..-7].replace('/', '.')
         }
     }
 }
 
 tasks.whenTaskAdded { task ->
-    if (task.name == "bindingsSharedLibrary" || task.name == "bindingsStaticLibrary") task.dependsOn generateHeaders
+    if (task.name == "nativesSharedLibrary" || task.name == "nativesStaticLibrary") task.dependsOn generateHeaders
 }

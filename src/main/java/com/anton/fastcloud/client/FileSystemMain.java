@@ -1,6 +1,6 @@
 package com.anton.fastcloud.client;
 
-import com.anton.fastcloud.bindings.Bindings;
+import com.anton.fastcloud.natives.Natives;
 import com.anton.fastcloud.bindings.FuseLibNative;
 import com.anton.fastcloud.bindings.SystemNative;
 
@@ -11,7 +11,7 @@ import java.util.Random;
 @SuppressWarnings("OctalInteger")
 public class FileSystemMain {
     static {
-        Bindings.init();
+        Natives.init();
     }
 
     public static void main(String[] args) {
