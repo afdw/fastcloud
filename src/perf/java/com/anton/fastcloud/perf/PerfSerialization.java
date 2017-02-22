@@ -1,4 +1,4 @@
-package com.anton.fastcloud.jmh;
+package com.anton.fastcloud.perf;
 
 import com.anton.fastcloud.buffer.ByteBufferPool;
 import com.anton.fastcloud.serialization.ISerializer;
@@ -8,7 +8,7 @@ import org.openjdk.jmh.annotations.*;
 import java.nio.ByteBuffer;
 
 @State(Scope.Benchmark)
-public class SerializationBenchmark {
+public class PerfSerialization {
     private static Test testOld = new Test(345);
     private static ISerializer<Test> serializer = SerializersClassLoader.getSerializer(Test.class);
 

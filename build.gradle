@@ -1,5 +1,5 @@
 plugins {
-    id "com.comsysto.gradle.crolabefra.java" version "0.2.2"
+    id "com.github.johnrengelman.shadow" version "1.2.4"
 }
 
 apply plugin: 'java'
@@ -14,12 +14,33 @@ repositories {
     mavenCentral()
 }
 
+sourceSets {
+    natives
+    main {
+        compileClasspath += natives.output
+        runtimeClasspath += natives.output
+    }
+    test {
+        compileClasspath += natives.output
+        runtimeClasspath += natives.output
+    }
+    perf {
+        compileClasspath += natives.output
+        runtimeClasspath += natives.output
+        compileClasspath += main.output
+        runtimeClasspath += main.output
+    }
+}
+
 dependencies {
     compile group: 'com.google.guava', name: 'guava', version: '21.0'
     compile group: 'io.undertow', name: 'undertow-websockets-jsr', version: '2.0.0.Alpha1'
     compile group: 'asm', name: 'asm-all', version: '3.3.1'
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.5'
     testCompile group: 'junit', name: 'junit', version: '4.11'
+    perfCompile project
+    perfCompile 'org.openjdk.jmh:jmh-core:1.17.4'
+    perfCompile 'org.openjdk.jmh:jmh-generator-annprocess:1.17.4'
 }
 
 model {
@@ -45,15 +66,23 @@ model {
     }
 }
 
-sourceSets {
-    natives
-    main {
-        compileClasspath += natives.output
-        runtimeClasspath += natives.output
+task benchmarks(dependsOn: perfClasses) {
+    apply plugin: 'com.github.johnrengelman.shadow'
+
+    shadowJar {
+        classifier = "benchmarks"
+
+        from sourceSets.perf.output
+        from sourceSets.main.output
+        from sourceSets.natives.output
+        from project.configurations.perfRuntime
+
+        manifest {
+            attributes "Main-Class": "org.openjdk.jmh.Main"
+        }
     }
-    test {
-        compileClasspath += natives.output
-        runtimeClasspath += natives.output
+    doLast {
+        shadowJar.execute()
     }
 }
 

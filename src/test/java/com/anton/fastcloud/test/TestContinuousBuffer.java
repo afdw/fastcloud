@@ -68,8 +68,6 @@ public class TestContinuousBuffer {
         ContinuousBuffer newBuffer = new ContinuousBuffer(byteBuffers);
         double newValue = newBuffer.readDouble();
         newBuffer.free();
-        System.out.println(oldValue);
-        System.out.println(newValue);
         Assert.assertEquals(oldValue, newValue, 0);
     }
 

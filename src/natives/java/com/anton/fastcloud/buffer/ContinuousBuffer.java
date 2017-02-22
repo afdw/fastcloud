@@ -44,25 +44,49 @@ public class ContinuousBuffer {
 
     public native int readInt();
 
-    public void writeFloat(float value) {
-        writeInt(Float.floatToIntBits(value));
-    }
+    public native void writeFloat(float value);
 
-    public float readFloat() {
-        return Float.intBitsToFloat(readInt());
-    }
+    public native float readFloat();
 
     public native void writeLong(long value);
 
     public native long readLong();
 
-    public void writeDouble(double value) {
-        writeLong(Double.doubleToLongBits(value));
-    }
+    public native void writeDouble(double value);
 
-    public double readDouble() {
-        return Double.longBitsToDouble(readLong());
-    }
+    public native double readDouble();
+
+    public native void writeBooleanArray(boolean[] array);
+
+    public native boolean[] readBooleanArray(int arraySize);
+
+    public native void writeByteArray(byte[] array);
+
+    public native byte[] readByteArray(int arraySize);
+
+    public native void writeShortArray(short[] array);
+
+    public native short[] readShortArray(int arraySize);
+
+    public native void writeCharArray(char[] array);
+
+    public native char[] readCharArray(int arraySize);
+
+    public native void writeIntArray(int[] array);
+
+    public native int[] readIntArray(int arraySize);
+
+    public native void writeFloatArray(float[] array);
+
+    public native float[] readFloatArray(int arraySize);
+
+    public native void writeLongArray(long[] array);
+
+    public native long[] readLongArray(int arraySize);
+
+    public native void writeDoubleArray(double[] array);
+
+    public native double[] readDoubleArray(int arraySize);
 
     public native void writeByteBuffer(ByteBuffer byteBuffer);
 

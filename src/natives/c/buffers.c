@@ -100,29 +100,51 @@ JNIEXPORT void JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_init(JNI
     JNIEXPORT void JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_write ## upperType(JNIEnv *jniEnv, jobject jniContinuousBuffer, jniType value) { \
         writeToBuffer( \
                 sizeof(jniType), \
-                for (unsigned char i = 0; i < sizeof(jniType); i++) { address[position++] = value >> (i * 8); } \
+                memcpy(address + position, &value, sizeof(jniType)); position += sizeof(jniType); \
         ) \
     } \
     JNIEXPORT jniType JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_read ## upperType(JNIEnv *jniEnv, jobject jniContinuousBuffer) { \
         jniType value = 0; \
         readFromBuffer( \
                 sizeof(jniType), \
-                for (unsigned char i = 0; i < sizeof(jniType); i++) { value |= (jniType) address[position++] << (i * 8); } \
+                memcpy(&value, address + position, sizeof(jniType)); position += sizeof(jniType); \
         ) \
         return value; \
     } \
+    JNIEXPORT void JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_write ## upperType ## Array(JNIEnv *jniEnv, jobject jniContinuousBuffer, jniType ## Array jniArray) { \
+        jint writeSize = (*jniEnv)->GetArrayLength(jniEnv, jniArray) * sizeof(jniType); \
+        jniType *array = (*jniEnv)->Get ## upperType ## ArrayElements(jniEnv, jniArray, NULL); \
+        writeToBuffer( \
+                writeSize, \
+                memcpy(address + position, array, writeSize); position += writeSize; \
+        ) \
+        (*jniEnv)->Release ## upperType ## ArrayElements(jniEnv, jniArray, array, JNI_ABORT); \
+    } \
+    JNIEXPORT jniType ## Array JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_read ## upperType ## Array(JNIEnv *jniEnv, jobject jniContinuousBuffer, jint arraySize) { \
+        jint readSize = arraySize * sizeof(jniType); \
+        jniType ## Array jniArray = (*jniEnv)->New ## upperType ## Array(jniEnv, arraySize); \
+        jniType *array = (*jniEnv)->Get ## upperType ## ArrayElements(jniEnv, jniArray, NULL); \
+        readFromBuffer( \
+                readSize, \
+                memcpy(array, address + position, readSize); position += readSize; \
+        ) \
+        (*jniEnv)->Release ## upperType ## ArrayElements(jniEnv, jniArray, array, 0); \
+        return jniArray; \
+    }
 
 primitiveBufferMethods(Boolean, jboolean)
 primitiveBufferMethods(Byte, jbyte)
 primitiveBufferMethods(Short, jshort)
 primitiveBufferMethods(Char, jchar)
 primitiveBufferMethods(Int, jint)
+primitiveBufferMethods(Float, jfloat)
 primitiveBufferMethods(Long, jlong)
+primitiveBufferMethods(Double, jdouble)
 
 #undef primitiveBufferMethods
 
 JNIEXPORT void JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_writeByteBuffer(JNIEnv *jniEnv, jobject jniContinuousBuffer, jobject jniByteBuffer) {
-    int writeSize = (*jniEnv)->GetDirectBufferCapacity(jniEnv, jniByteBuffer);
+    jint writeSize = (*jniEnv)->GetDirectBufferCapacity(jniEnv, jniByteBuffer);
     unsigned char *byteBufferAddress = (*jniEnv)->GetDirectBufferAddress(jniEnv, jniByteBuffer);
     writeToBuffer(
             writeSize,
