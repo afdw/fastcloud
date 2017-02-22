@@ -11,6 +11,7 @@ jfieldID jniAddressFieldId;
 jfieldID jniCapacityFieldId;
 jfieldID jniPositionFieldId;
 jfieldID jniSizeFieldId;
+jclass jniArrayIndexOutOfBoundsExceptionClass;
 
 void onJniLoadBuffers() {
     JNIEnv *env = getJniEnv();
@@ -19,6 +20,7 @@ void onJniLoadBuffers() {
     jniCapacityFieldId = (*env)->GetFieldID(env, jniContinuousBufferClass, "capacity", "J");
     jniPositionFieldId = (*env)->GetFieldID(env, jniContinuousBufferClass, "position", "J");
     jniSizeFieldId = (*env)->GetFieldID(env, jniContinuousBufferClass, "size", "J");
+    jniArrayIndexOutOfBoundsExceptionClass = (*env)->FindClass(env, "java/lang/ArrayIndexOutOfBoundsException");
 }
 
 unsigned char *getAddress(JNIEnv *jniEnv, jobject jniContinuousBuffer) {
@@ -67,9 +69,9 @@ JNIEXPORT void JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_init(JNI
     size_t position = getPosition(jniEnv, jniContinuousBuffer); \
     size_t size = getSize(jniEnv, jniContinuousBuffer); \
     size_t endSize = position + readSize; \
-    if (endSize >= size) { \
+    if (endSize > size) { \
         size = endSize; \
-        if (endSize >= capacity) { \
+        if (endSize > capacity) { \
             capacity = GROWING_BUFFER_CAPACITY > endSize ? GROWING_BUFFER_CAPACITY : endSize; \
             setCapacity(jniEnv, jniContinuousBuffer, capacity); \
             address = realloc(address, capacity); \
@@ -80,31 +82,44 @@ JNIEXPORT void JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_init(JNI
     readCode \
     setPosition(jniEnv, jniContinuousBuffer, position);
 
-#define readFromBuffer(writeSize, writeCode) \
+#define readFromBuffer(readSize, writeCode) \
     unsigned char *address = getAddress(jniEnv, jniContinuousBuffer); \
     size_t position = getPosition(jniEnv, jniContinuousBuffer); \
+    size_t size = getSize(jniEnv, jniContinuousBuffer); \
+    size_t endSize = position + readSize; \
+    if (endSize > size) { \
+        char *message = malloc(4096); \
+        sprintf(message, "position (%lu) + write size (%lu) > size (%lu)", position, readSize, size); \
+        (*jniEnv)->ThrowNew(jniEnv, jniArrayIndexOutOfBoundsExceptionClass, message); \
+        free(message); \
+    } \
     writeCode \
     setPosition(jniEnv, jniContinuousBuffer, position);
 
-JNIEXPORT void JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_writeInt(JNIEnv *jniEnv, jobject jniContinuousBuffer, jint value) {
-    writeToBuffer(
-            sizeof(int),
-            for (char i = 0; i < sizeof(int); i++) { \
-                address[position++] = value >> (i * 8); \
-            }
-    )
-}
+#define primitiveBufferMethods(upperType, jniType) \
+    JNIEXPORT void JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_write ## upperType(JNIEnv *jniEnv, jobject jniContinuousBuffer, jniType value) { \
+        writeToBuffer( \
+                sizeof(jniType), \
+                for (unsigned char i = 0; i < sizeof(jniType); i++) { address[position++] = value >> (i * 8); } \
+        ) \
+    } \
+    JNIEXPORT jniType JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_read ## upperType(JNIEnv *jniEnv, jobject jniContinuousBuffer) { \
+        jniType value = 0; \
+        readFromBuffer( \
+                sizeof(jniType), \
+                for (unsigned char i = 0; i < sizeof(jniType); i++) { value |= (jniType) address[position++] << (i * 8); } \
+        ) \
+        return value; \
+    } \
 
-JNIEXPORT jint JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_readInt(JNIEnv *jniEnv, jobject jniContinuousBuffer) {
-    int value = 0;
-    readFromBuffer(
-            sizeof(int),
-            for (char i = 0; i < sizeof(int); i++) { \
-                value |= address[position++] << (i * 8); \
-            }
-    )
-    return value;
-}
+primitiveBufferMethods(Boolean, jboolean)
+primitiveBufferMethods(Byte, jbyte)
+primitiveBufferMethods(Short, jshort)
+primitiveBufferMethods(Char, jchar)
+primitiveBufferMethods(Int, jint)
+primitiveBufferMethods(Long, jlong)
+
+#undef primitiveBufferMethods
 
 JNIEXPORT void JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_writeByteBuffer(JNIEnv *jniEnv, jobject jniContinuousBuffer, jobject jniByteBuffer) {
     int writeSize = (*jniEnv)->GetDirectBufferCapacity(jniEnv, jniByteBuffer);

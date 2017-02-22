@@ -24,9 +24,45 @@ public class ContinuousBuffer {
 
     private native void init();
 
+    public native void writeBoolean(boolean value);
+
+    public native boolean readBoolean();
+
+    public native void writeByte(byte value);
+
+    public native byte readByte();
+
+    public native void writeShort(short value);
+
+    public native short readShort();
+
+    public native void writeChar(char value);
+
+    public native char readChar();
+
     public native void writeInt(int value);
 
     public native int readInt();
+
+    public void writeFloat(float value) {
+        writeInt(Float.floatToIntBits(value));
+    }
+
+    public float readFloat() {
+        return Float.intBitsToFloat(readInt());
+    }
+
+    public native void writeLong(long value);
+
+    public native long readLong();
+
+    public void writeDouble(double value) {
+        writeLong(Double.doubleToLongBits(value));
+    }
+
+    public double readDouble() {
+        return Double.longBitsToDouble(readLong());
+    }
 
     public native void writeByteBuffer(ByteBuffer byteBuffer);
 
