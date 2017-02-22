@@ -129,3 +129,6 @@ JNIEXPORT jobject JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_readB
 JNIEXPORT void JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_free(JNIEnv *jniEnv, jobject jniContinuousBuffer) {
     free(getAddress(jniEnv, jniContinuousBuffer));
 }
+
+#undef writeToBuffer
+#undef readFromBuffer
