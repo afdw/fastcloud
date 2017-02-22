@@ -24,7 +24,7 @@ public class PerfContinuousBuffer {
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
     public void test() {
-        ContinuousBuffer buffer = new ContinuousBuffer(arr.length);
+        ContinuousBuffer buffer = new ContinuousBuffer(arr.length * 4);
         buffer.writeIntArray(arr);
         buffer.rewind();
         if (!Arrays.equals(arr, buffer.readIntArray(arr.length))) {
