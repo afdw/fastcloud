@@ -1,7 +1,5 @@
 package com.anton.fastcloud.natives;
 
-import com.anton.fastcloud.bindings.FuseLibNative;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,7 +12,7 @@ public class Natives {
             Path tempDirPath = Files.createTempDirectory("fastcloud-natives");
             for (String libName : LIB_NAMES) {
                 Path libPath = tempDirPath.resolve(libName);
-                Files.copy(FuseLibNative.class.getResourceAsStream("/" + libName), libPath);
+                Files.copy(Natives.class.getResourceAsStream("/" + libName), libPath);
                 System.load(libPath.toString());
                 if (!libPath.toFile().delete()) {
                     throw new IOException("Can't remove temp files");
