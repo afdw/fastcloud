@@ -74,8 +74,11 @@ JNIEXPORT void JNICALL Java_com_anton_fastcloud_buffer_ContinuousBuffer_init(JNI
         if (endSize > capacity) { \
             capacity = GROWING_BUFFER_CAPACITY > endSize ? GROWING_BUFFER_CAPACITY : endSize; \
             setCapacity(jniEnv, jniContinuousBuffer, capacity); \
-            address = realloc(address, capacity); \
-            setAddress(jniEnv, jniContinuousBuffer, address); \
+            unsigned char *newAddress = realloc(address, capacity); \
+            if (newAddress != address) { \
+                address = newAddress; \
+                setAddress(jniEnv, jniContinuousBuffer, address); \
+            } \
         } \
         setSize(jniEnv, jniContinuousBuffer, size); \
     } \
