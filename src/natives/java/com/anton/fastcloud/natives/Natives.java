@@ -14,13 +14,13 @@ public class Natives {
                 Path libPath = tempDirPath.resolve(libName);
                 Files.copy(Natives.class.getResourceAsStream("/" + libName), libPath);
                 System.load(libPath.toString());
-//                if (!libPath.toFile().delete()) {
-//                    throw new IOException("Can't remove temp files");
-//                }
+                if (!libPath.toFile().delete()) {
+                    throw new IOException("Can't remove temp files");
+                }
             }
-//            if (!tempDirPath.toFile().delete()) {
-//                throw new IOException("Can't remove temp files");
-//            }
+            if (!tempDirPath.toFile().delete()) {
+                throw new IOException("Can't remove temp files");
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
