@@ -1,12 +1,11 @@
 plugins {
     id "com.github.johnrengelman.shadow" version "1.2.4"
+    id "java"
+    id "c"
 }
 
-apply plugin: 'java'
-apply plugin: 'c'
-
-group 'com.anton.fastcloud'
-version '1.0-SNAPSHOT'
+group "com.anton.fastcloud"
+version "1.0-SNAPSHOT"
 
 sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
 
@@ -33,14 +32,13 @@ sourceSets {
 }
 
 dependencies {
-    compile group: 'com.google.guava', name: 'guava', version: '21.0'
-    compile group: 'io.undertow', name: 'undertow-websockets-jsr', version: '2.0.0.Alpha1'
-    compile group: 'asm', name: 'asm-all', version: '3.3.1'
-    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.5'
-    testCompile group: 'junit', name: 'junit', version: '4.11'
-    perfCompile project
-    perfCompile 'org.openjdk.jmh:jmh-core:1.17.4'
-    perfCompile 'org.openjdk.jmh:jmh-generator-annprocess:1.17.4'
+    compile group: "com.google.guava", name: "guava", version: "21.0"
+    compile group: "io.undertow", name: "undertow-websockets-jsr", version: "2.0.0.Alpha1"
+    compile group: "asm", name: "asm-all", version: "3.3.1"
+    compile group: "org.apache.commons", name: "commons-lang3", version: "3.5"
+    testCompile group: "junit", name: "junit", version: "4.11"
+    perfCompile "org.openjdk.jmh:jmh-core:1.17.4"
+    perfCompile "org.openjdk.jmh:jmh-generator-annprocess:1.17.4"
 }
 
 model {
@@ -54,29 +52,25 @@ model {
                 cCompiler.args "-Werror"
                 cCompiler.args "-g"
                 cCompiler.args "-Og"
-                cCompiler.args "-I${System.properties['java.home']}/../include"
+                cCompiler.args "-I${System.properties["java.home"]}/../include"
                 if (org.gradle.internal.os.OperatingSystem.current().isLinux()) {
-                    cCompiler.args "-I${System.properties['java.home']}/../include/linux"
+                    cCompiler.args "-I${System.properties["java.home"]}/../include/linux"
                     cCompiler.args "-D_FILE_OFFSET_BITS=64"
-                    cCompiler.args 'pkg-config fuse3 --cflags'.execute().text.trim().split(' ')
-                    linker.args 'pkg-config fuse3 --libs'.execute().text.trim().split(' ')
+                    cCompiler.args "pkg-config fuse3 --cflags".execute().text.trim().split(" ")
+                    linker.args "pkg-config fuse3 --libs".execute().text.trim().split(" ")
                 }
             }
         }
     }
 }
 
-task benchmarks(dependsOn: perfClasses) {
-    apply plugin: 'com.github.johnrengelman.shadow'
-
+task benchmarks(dependsOn: [perfClasses, build]) {
     shadowJar {
         classifier = "benchmarks"
-
         from sourceSets.perf.output
         from sourceSets.main.output
         from sourceSets.natives.output
         from project.configurations.perfRuntime
-
         manifest {
             attributes "Main-Class": "org.openjdk.jmh.Main"
         }
@@ -94,18 +88,21 @@ task cleanGenerateHeaders {
     delete project.file("${project.buildFile.parent}/src/natives/headers/generated")
 }
 
-task generateHeaders(dependsOn: ':classes', type: Exec) {
+task generateHeaders(dependsOn: compileJava, type: Exec) {
     def classesDir = project.sourceSets.natives.output.classesDir
     workingDir classesDir
-    executable "${System.properties['java.home']}/../bin/javah"
-    args '-d', "${project.buildFile.parent}/src/natives/headers/generated"
+    executable "${System.properties["java.home"]}/../bin/javah"
+    args "-d", "${project.buildFile.parent}/src/natives/headers/generated"
     doFirst {
-        fileTree dir: classesDir, include: '**/*.class' visit {
-            if (!it.directory) args it.path[0..-7].replace('/', '.')
+        fileTree dir: classesDir, include: "**/*.class" visit {
+            if (!it.directory) args it.path[0..-7].replace("/", ".")
         }
     }
 }
 
 tasks.whenTaskAdded { task ->
-    if (task.name == "nativesSharedLibrary" || task.name == "nativesStaticLibrary") task.dependsOn generateHeaders
+    if (task.name == "nativesSharedLibrary" || task.name == "nativesStaticLibrary") {
+        task.dependsOn generateHeaders
+        processResources.dependsOn task
+    }
 }
